@@ -1,1 +1,7 @@
-{ "name": "live-imagine", "version": "1.0.0", "private": true, "type": "module", "license": "MIT" }
+{
+  "name": "live-imagine",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Vercel serverless functions (api/) for the hosted Live Imagine. The app lives in frontend/ and backend/."
+}

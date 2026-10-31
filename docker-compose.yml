@@ -1,0 +1,31 @@
+# `docker compose up` → http://localhost:5173 (frontend) + http://localhost:8000 (FastAPI).
+# Simulated mode needs nothing. For API mode put OPENAI_API_KEY / FAL_KEY in a git-ignored .env file.
+# For local GPU mode use the `gpu` profile: `docker compose --profile gpu up backend-gpu frontend`.
+services:
+  backend:
+    build: { context: ./backend }
+    ports: ["8000:8000"]
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - FAL_KEY=${FAL_KEY:-}
+      - LIVE_DEFAULT_PROVIDER=${LIVE_DEFAULT_PROVIDER:-simulated}
+  backend-gpu:
+    profiles: ["gpu"]
+    build: { context: ./backend, args: { REQUIREMENTS: requirements-gpu.txt } }
+    ports: ["8000:8000"]
+    environment:
+      - DIFFUSERS_MODEL=${DIFFUSERS_MODEL:-stabilityai/sdxl-turbo}
+      - DIFFUSERS_DEVICE=cuda
+      - HF_TOKEN=${HF_TOKEN:-}
+    volumes: ["hf-cache:/root/.cache/huggingface"]
+    deploy:
+      resources:
+        reservations:
+          devices: [{ driver: nvidia, count: 1, capabilities: [gpu] }]
+  frontend:
+    build: { context: ./frontend }
+    ports: ["5173:5173"]
+    environment:
+      - LIVE_BACKEND_URL=http://backend:8000
+volumes:
+  hf-cache:

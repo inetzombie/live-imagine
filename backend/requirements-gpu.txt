@@ -1,0 +1,7 @@
+-r requirements.txt
+torch>=2.2
+diffusers>=0.30
+transformers>=4.40
+accelerate>=0.29
+sentencepiece
+protobuf

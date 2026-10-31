@@ -1,3 +1,12 @@
 node_modules
 .vercel
 .env*
+!.env.example
+dist
+dist-e2e
+test-results
+playwright-report
+.venv
+__pycache__
+.pytest_cache
+*.pyc
