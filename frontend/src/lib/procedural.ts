@@ -63,8 +63,8 @@ export function paintProcedural(ctx: Ctx2D, w: number, h: number, prompt: string
   const u = Math.min(w, h) / 512;
   const hue = rnd() * 360;
   const pal = {
-    dusk: { top: hsl(hue + 230, 50, 14), mid: hsl(hue + 300, 45, 34), bot: hsl(hue + 25, 85, 62), sun: hsl(hue + 35, 95, 72), land: hue + 250, ll: 22 },
-    night: { top: hsl(hue + 225, 60, 5), mid: hsl(hue + 230, 50, 13), bot: hsl(hue + 220, 40, 26), sun: hsl(hue + 50, 30, 90), land: hue + 225, ll: 12 },
+    dusk: { top: hsl(225 + (hue % 40), 50, 14), mid: hsl(290 + (hue % 50), 45, 34), bot: hsl(10 + (hue % 35), 85, 62), sun: hsl(30 + (hue % 25), 95, 72), land: 250 + (hue % 40), ll: 22 },
+    night: { top: hsl(220 + (hue % 40), 60, 5), mid: hsl(225 + (hue % 40), 50, 13), bot: hsl(215 + (hue % 50), 40, 26), sun: hsl(50, 30, 90), land: 220 + (hue % 40), ll: 12 },
     day: { top: hsl(205, 70, 48), mid: hsl(200, 65, 68), bot: hsl(190, 50, 86), sun: hsl(50, 100, 92), land: 140 + (hue % 60), ll: 34 },
     neon: { top: hsl(270, 70, 8), mid: hsl(300, 75, 22), bot: hsl(330, 90, 52), sun: hsl(45, 100, 65), land: 265, ll: 14 },
   }[mood];
