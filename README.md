@@ -7,7 +7,7 @@ Type a prompt, press **Generate**, and watch the image form on a live canvas: no
 ```
 ┌──────────── frontend/ (React + TS + Vite + Tailwind) ────────────┐
 │ LiveCanvas: DPR canvas, letterbox, 200 ms rAF crossfade, deblur, │
-│ grain · HUD · timeline replay (60-frame ring) · WebM/PNG export  │
+│ grain · HUD · timeline replay (60-frame ring) · WebM/GIF/PNG export│
 └──────┬─────────────────────┬──────────────────────┬──────────────┘
        │ EventSource (SSE)    │ fetch-stream (SSE)    │ Web Worker
 ┌──────▼────────────┐ ┌──────▼──────────────┐ ┌──────▼───────────────┐
@@ -72,7 +72,7 @@ Vercel functions keep no memory between requests, so the in-memory job queue can
 * **Local GPU:** shown as "not configured", because Vercel has no GPU.
 
 ## Frontend features
-Live canvas at devicePixelRatio, letterboxed · `createImageBitmap` decode (off the main thread) · 200 ms rAF crossfade · deblur settle (canvas `blur()` eased from 12px to 0) · film grain that fades with progress · HUD (progress ring, Step n/N, elapsed, steps/s, seed, model, **Real preview / Simulated** badge) · timeline scrubber with play/pause and 0.5x/1x/2x replay (60-frame ring buffer; evicted bitmaps are `close()`d) · PNG download, WebM export (MediaRecorder on `canvas.captureStream`), copy params as JSON · history drawer (localStorage, 30 runs, thumbnails) · seed dice and lock · regenerate with the same seed · aspect presets · preview-frequency slider · provider dropdown.
+Live canvas at devicePixelRatio, letterboxed · `createImageBitmap` decode (off the main thread) · 200 ms rAF crossfade · deblur settle (canvas `blur()` eased from 12px to 0) · film grain that fades with progress · HUD (progress ring, Step n/N, elapsed, steps/s, seed, model, **Real preview / Simulated** badge) · timeline scrubber with play/pause and 0.5x/1x/2x replay (60-frame ring buffer; evicted bitmaps are `close()`d) · PNG download, WebM export (MediaRecorder on `canvas.captureStream`), animated GIF export (built-in encoder: per-frame median-cut palette + LZW, no dependencies), copy params as JSON · history drawer (localStorage, 30 runs, thumbnails) · seed dice and lock · regenerate with the same seed · aspect presets · preview-frequency slider · provider dropdown.
 **Shortcuts:** ⌘/Ctrl+Enter generate · Esc cancel · Space play/pause the replay · F fullscreen. `prefers-reduced-motion` disables the crossfade and grain.
 
 ## Tests
@@ -101,9 +101,13 @@ docker-compose.yml · Makefile · .env.example
 3. Watch the HUD: the Step counter, elapsed time and steps/s rise, and the ring fills.
 4. Press **Esc** mid-run. It stops, says "Cancelled", and the frames so far stay scrubbable.
 5. After a run, drag the timeline or press **Space** to replay it. Try 0.5x and 2x.
-6. **⬇ PNG** downloads the final image, and **⬇ WebM** downloads a video of the formation.
+6. **⬇ PNG** downloads the final image, **⬇ WebM** downloads a video of the formation, and **⬇ GIF** downloads it as an animated GIF (384 px long side).
 7. Open **History** and click a thumbnail. The prompt and params (seed locked) are reloaded.
 8. Choose **OpenAI gpt-image** in the provider dropdown without a key. You should see a "Not configured… set OPENAI_API_KEY" note and Generate should be disabled.
 9. Run `make test`. All pytest, vitest and Playwright tests should pass.
 
 MIT © 2026 der_zuhalter
+
+## Simulated mode scenes
+
+The in-browser Simulated mode paints a procedural scene picked from prompt keywords: ocean, city, forest, desert, mountains or space, with a dusk, night, day or neon mood (for example "cyberpunk city at night" or "lighthouse on the ocean at sunset"). Prompts with none of the keywords get a scene chosen from the prompt hash, so the same prompt and seed always give the same picture. The noise it starts from is a fixed low-resolution "latent" that stays the same between steps and fades on a cosine schedule, so shapes appear first and detail last. It is still a simulation, not a diffusion model. The FastAPI backend's Simulated provider still uses the older, simpler scene.

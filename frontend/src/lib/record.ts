@@ -34,3 +34,23 @@ export function downloadBlob(blob: Blob, name: string): void {
   document.body.append(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+
+/** Encode the stored formation as an animated GIF (long side capped for size), last frame held. */
+export async function recordGif(frames: readonly Frame[], final: ImageBitmap | null, maxSide = 384, frameMs = 140): Promise<Blob> {
+  const { encodeGif } = await import('./gif');
+  const src = [...frames.map((f) => f.bitmap), ...(final ? [final] : [])];
+  if (!src.length) throw new Error('No frames to export.');
+  const first = src[src.length - 1]!;
+  const k = Math.min(1, maxSide / Math.max(first.width, first.height));
+  const w = Math.max(1, Math.round(first.width * k)), h = Math.max(1, Math.round(first.height * k));
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Canvas 2D not supported');
+  ctx.imageSmoothingQuality = 'high';
+  const out = src.map((bm, i) => {
+    ctx.drawImage(bm, 0, 0, w, h);
+    return { data: ctx.getImageData(0, 0, w, h).data, delayCs: i === src.length - 1 ? 250 : frameMs / 10 };
+  });
+  await new Promise((r) => setTimeout(r, 0));
+  return new Blob([encodeGif(w, h, out) as Uint8Array<ArrayBuffer>], { type: 'image/gif' });
+}

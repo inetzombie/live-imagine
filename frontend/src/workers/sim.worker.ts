@@ -30,6 +30,20 @@ self.onmessage = async (ev: MessageEvent<WorkerIn>) => {
     paintProcedural(tctx, pw, ph, params.prompt, seed);
     const rnd = mulberry32(seed ^ 0x9e3779b9);
     const longSide = Math.max(pw, ph);
+    // Latent-like starting noise: coloured Gaussian at 1/8 resolution (like an SD latent), smoothly upscaled.
+    const lw = Math.max(4, Math.round(pw / 8)), lh = Math.max(4, Math.round(ph / 8));
+    const lc = new OffscreenCanvas(lw, lh), lcx = lc.getContext('2d');
+    const full = new OffscreenCanvas(pw, ph), fcx = full.getContext('2d', { willReadFrequently: true });
+    if (!lcx || !fcx) throw new Error('2D context unavailable');
+    const li = lcx.createImageData(lw, lh);
+    for (let i = 0; i < li.data.length; i += 4) {
+      const m = 128 + gaussian(rnd) * 40;
+      li.data[i] = m + gaussian(rnd) * 45; li.data[i + 1] = m + gaussian(rnd) * 45; li.data[i + 2] = m + gaussian(rnd) * 45; li.data[i + 3] = 255;
+    }
+    lcx.putImageData(li, 0, 0);
+    fcx.imageSmoothingQuality = 'high';
+    fcx.drawImage(lc, 0, 0, pw, ph);
+    const latent = fcx.getImageData(0, 0, pw, ph);
 
     for (let step = 1; step <= steps; step++) {
       const s = step / steps;
@@ -48,15 +62,18 @@ self.onmessage = async (ev: MessageEvent<WorkerIn>) => {
         if (blur > 0.3) octx.filter = `blur(${blur.toFixed(2)}px)`;
         octx.drawImage(small, 0, 0, pw, ph);
         octx.filter = 'none';
-        const a = Math.min(1, s ** 1.6);
+        // Cosine-style signal schedule: structure appears early, fine detail late (like a real sampler).
+        const a = Math.min(1, Math.sin((Math.PI / 2) * Math.min(1, s * 1.05)) ** 2);
         if (a < 1) {
           const img = octx.getImageData(0, 0, pw, ph);
-          const d = img.data, sa = Math.sqrt(a), sn = Math.sqrt(1 - a) * 255;
+          const d = img.data, sa = Math.sqrt(a), sn = Math.sqrt(1 - a);
+          const L = latent.data;
           for (let i = 0; i < d.length; i += 4) {
-            const n = 0.5 + 0.5 * gaussian(rnd);
-            d[i] = sa * (d[i] ?? 0) + sn * n + sn * 0.25 * gaussian(rnd);
-            d[i + 1] = sa * (d[i + 1] ?? 0) + sn * n + sn * 0.25 * gaussian(rnd);
-            d[i + 2] = sa * (d[i + 2] ?? 0) + sn * n + sn * 0.25 * gaussian(rnd);
+            // fixed low-frequency "latent" noise (coherent between frames) + a little per-frame grain
+            const g = gaussian(rnd) * 22 * sn;
+            d[i] = sa * (d[i] ?? 0) + sn * (L[i] ?? 0) + g;
+            d[i + 1] = sa * (d[i + 1] ?? 0) + sn * (L[i + 1] ?? 0) + g;
+            d[i + 2] = sa * (d[i + 2] ?? 0) + sn * (L[i + 2] ?? 0) + g;
           }
           octx.putImageData(img, 0, 0);
         }
@@ -65,11 +82,11 @@ self.onmessage = async (ev: MessageEvent<WorkerIn>) => {
       }
       await sleep(stepMs);
     }
-    const full = new OffscreenCanvas(W, H);
-    const fctx = full.getContext('2d');
+    const fin = new OffscreenCanvas(W, H);
+    const fctx = fin.getContext('2d');
     if (!fctx) throw new Error('2D context unavailable');
     paintProcedural(fctx, W, H, params.prompt, seed);
-    post({ type: 'final', seed, blob: await full.convertToBlob({ type: 'image/png' }) });
+    post({ type: 'final', seed, blob: await fin.convertToBlob({ type: 'image/png' }) });
   } catch (e) {
     post({ type: 'error', message: (e as Error).message });
   }

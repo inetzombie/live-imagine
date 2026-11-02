@@ -4,7 +4,7 @@ import { type Backend, type RunHandle, type RunMsg, detectBackend, friendly } fr
 import { FrameBuffer } from './lib/frames';
 import { LiveCanvas } from './lib/renderer';
 import { type HistoryItem, clearHistory, loadHistory, saveHistory, thumbnail } from './lib/history';
-import { downloadBlob, recordWebM } from './lib/record';
+import { downloadBlob, recordGif, recordWebM } from './lib/record';
 import { Btn, Field, Ring, inputCls } from './components/ui';
 
 type Status = 'idle' | 'connecting' | 'queued' | 'running' | 'done' | 'error';
@@ -212,6 +212,13 @@ export default function App() {
     catch (e) { setToast((e as Error).message); }
     finally { setRecording(false); setIdx(maxIdx); }
   };
+  const downloadGif = async (): Promise<void> => {
+    if (recording) return;
+    setRecording(true); setPlaying(false);
+    try { downloadBlob(await recordGif(frames.current.all(), finalRef.current?.bitmap ?? null), `live-imagine-${run.seed ?? 'formation'}.gif`); }
+    catch (e) { setToast((e as Error).message); }
+    finally { setRecording(false); }
+  };
   const copyParams = async (): Promise<void> => {
     const p = lastParams.current;
     if (!p) return;
@@ -351,6 +358,7 @@ export default function App() {
             <div className="flex w-full flex-wrap gap-2 sm:ml-auto sm:w-auto">
               <Btn onClick={downloadPng} disabled={!finalRef.current || busy} testId="download">⬇ PNG</Btn>
               <Btn onClick={() => void downloadWebm()} disabled={!replayable || recording} testId="webm">{recording ? 'Recording…' : '⬇ WebM'}</Btn>
+              <Btn onClick={() => void downloadGif()} disabled={!replayable || recording} testId="gif">⬇ GIF</Btn>
               <Btn onClick={() => void copyParams()} disabled={!lastParams.current}>Copy JSON</Btn>
               <Btn onClick={regenerateSame} disabled={busy || run.seed === null} title="Regenerate with the same seed">↻ Same seed</Btn>
             </div>
